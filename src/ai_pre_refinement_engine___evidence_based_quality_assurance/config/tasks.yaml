@@ -1,0 +1,730 @@
+---
+input_normalization_and_gitlab_scope_validation:
+  description: "Normalize inputs into a standardized format and validate that required
+    GitLab scope inputs are provided. Ensure the automation has the minimum information
+    needed to query GitLab repositories effectively.\n\n**UPDATED WITH GROUP PATH:**
+    \ngitlab_group_path: \"radical-app\"\n\nRequired inputs validation:\n- `gitlab_group_path`
+    OR `gitlab_project_ids` (comma-separated) - at least one must be provided\n- optional:
+    `default_ref` (default: \"main\")  \n- optional: `max_projects` (default: 10)\n-
+    optional: `max_files_per_project` (default: 12)\n\nIf neither `gitlab_group_path`
+    nor `gitlab_project_ids` is provided, STOP execution and output a clear error
+    explaining what is missing and how to provide it. Do not continue to subsequent
+    tasks.\n\nExtract and normalize the `{feature_idea}` from the input into a clean,
+    structured format for downstream analysis.\n\n**TARGET REPOSITORIES (HARDCODED SCOPE
+    — do NOT analyze repos outside this list):**\nGroup: radical-app\nRepos (match
+    by name, case-insensitive):\n  1. APIv3\n  2. Admin catalog\n  3. Next\n  4.
+    Pages-Next\n  5. Front end monorepo\n  6. booking\n\nStep 1: Call GitLabListGroupProjectsTool
+    with group_path=\"radical-app\"\nStep 2: Match results against the 6 target repo
+    names above (case-insensitive, partial match allowed)\nStep 3: Output ONLY the
+    matched repos with their project_ids, paths, and default_branches\nStep 4: If
+    fewer than 4 of the 6 repos are found, report which are MISSING but continue
+    with what is available."
+  expected_output: "**SUCCESS - Normalized Inputs:**\n```json\n{\n  \"feature_idea\":
+    \"[extracted and cleaned feature description]\",\n  \"gitlab_group_path\": \"radical-app\",
+    \n  \"gitlab_project_ids\": [],\n  \"default_ref\": \"[branch name, default: main]\",\n
+    \ \"max_projects\": [number, default: 10],\n  \"max_files_per_project\": [number,
+    default: 12]\n}\n```\n\n**FAILURE - Missing GitLab Scope:**\n```\n\U0001F6AB CONFIGURATION
+    REQUIRED\n\nMissing required GitLab repository scope. Please provide either:\n\nOption
+    1 - GitLab Group Path:\n  gitlab_group_path: \"your-company/platform-group\"\n\nOption
+    2 - Specific Project IDs: \n  gitlab_project_ids: \"12345,67890,54321\"\n\nWithout
+    repository access, technical feasibility analysis cannot proceed.\n\nNext steps:\n1.
+    Add GitLab scope to your automation inputs\n2. Ensure your GitLab API token has
+    'read_repository' permissions\n3. Re-run the analysis\n\nExample input format:\n{\n
+    \ \"feature_idea\": \"your feature description\",\n  \"gitlab_group_path\": \"company/marketplace-platform\"\n}\n```"
+  agent: planner_and_orchestrator
+gitlab_tools_self_test:
+  description: |-
+    Run a comprehensive GitLab access self-test to detect misconfigured search scopes and permissions immediately. Fail fast if tools return empty results to prevent wasted analysis time.
+
+    Test sequence:
+    1) If gitlab_group_path is provided, call GitLab List Group Projects and retrieve up to max_projects from the normalized inputs
+    2) Pick 1 project from the returned list for testing
+    3) Call GitLab Repository Tree Lister at the repo root (path="") for default_ref to verify file access
+    4) Attempt GitLab Search for extremely common tokens that should exist in most repositories: "README", "package.json", ".gitlab-ci.yml", "Dockerfile"
+
+    Success criteria (ALL must pass):
+    - At least 1 project discovered from group/project list
+    - At least 1 repository tree entry returned (files/folders visible)
+    - At least 1 search hit returned from common file searches
+
+    If ANY criteria fails, immediately output a BLOCKER report and STOP execution.
+  expected_output: "Either SUCCESS confirmation with test results summary:\n\"✅ GitLab
+    Tools Self-Test PASSED\n- Projects discovered: [count]\n- Repository tree entries:
+    [count] \n- Search hits found: [count]\nGitLab access is properly configured.\"\n\nOR
+    BLOCKER error report:\n\"\U0001F6AB BLOCKER: GitLab Tools Self-Test FAILED\n-
+    Step failed: [which specific step]\n- Likely cause: [permissions issue / wrong
+    group path / search scope misconfigured]\n- Remediation steps: [exact steps to
+    fix the issue]\nSTOP: Cannot proceed with repository analysis until GitLab access
+    is properly configured.\""
+  agent: planner_and_orchestrator
+  context:
+  - input_normalization_and_gitlab_scope_validation
+repository_inventory_and_candidate_selection:
+  description: "Build a strategic candidate repository list by analyzing the full
+    project inventory and selecting the most relevant targets for the feature implementation.
+    This prevents wasting time on irrelevant codebases.\n\n**SCOPE LOCK — MANDATORY:**\nOnly
+    select from these 6 repositories (all under radical-app group):\n  1. APIv3\n
+    \ 2. Admin catalog\n  3. Next\n  4. Pages-Next\n  5. Front end monorepo\n  6.
+    booking\nIgnore ALL other projects in the radical-app group. If a target repo
+    is not found in the group listing, report it as MISSING.\n\nProcess:\n1) Take
+    the validated projects list from GitLab List Group Projects (from previous self-test)\n2)
+    Filter to ONLY the 6 target repos listed above (case-insensitive match)\n3) For
+    each matched repo, verify access by calling GitLab Repository Tree Lister at root\n4)
+    Rank the matched repos by relevance to {feature_idea}\n\nSelection criteria:\n-
+    ALL 6 target repos are candidates — do not exclude any that are accessible\n-
+    Rank by relevance to feature keywords but include all accessible repos"
+  expected_output: "Two-part output:\n\n**PART 1: Selected Candidate Repositories**\nTop
+    5-10 repositories ranked by relevance:\n```\n1. [Rank] project_name (project_id:
+    12345)\n   - path_with_namespace: group/project-name\n   - default_branch: main\n
+    \  - relevance_reason: \"Contains marketplace search functionality with rating
+    filters\"\n\n2. [Rank] project_name (project_id: 67890)\n   - path_with_namespace:
+    group/another-project\n   - default_branch: develop  \n   - relevance_reason:
+    \"Frontend components for neighborhood-based listings\"\n   \n[... continue for
+    all selected repos]\n```\n\n**PART 2: Feature Search Keywords**  \nComprehensive
+    keyword list (10-20 terms) derived from feature_idea:\n```\nPrimary Keywords:
+    [rating, reviews, score, filter, sorting]\nSecondary Keywords: [neighborhood,
+    geo, district, listing, search, ranking]  \nDomain-Specific: [open deposit, availability,
+    booking, marketplace]\nTechnical Terms: [elasticsearch, solr, index, query, aggregation]\n```"
+  agent: planner_and_orchestrator
+  context:
+  - gitlab_tools_self_test
+two_pass_evidence_retrieval:
+  description: |-
+    Execute a systematic two-pass evidence retrieval process for EACH candidate repository to guarantee actual file-path citations and concrete evidence.
+
+    **SCOPE LOCK**: Only analyze these 6 repositories from radical-app group: APIv3, Admin catalog, Next, Pages-Next, Front end monorepo, booking. Do NOT access or report on any other repositories.
+
+    **EXECUTION SCOPE**: This task runs for EVERY repository in the candidate list from the previous task.
+
+    **Pass 1 - Broad Search & Discovery:**
+    1) Take the candidate repository (project_id, path_with_namespace, default_branch)
+    2) Use GitLab Search / GitLab Repository Search Tool with the generated keyword list from repository selection
+    3) Capture search hits and their file paths
+    4) Create a shortlist of up to max_files_per_project most relevant files
+
+    **Priority File Inclusion (Always check if present):**
+    - README.md, CODEOWNERS, .gitlab-ci.yml
+    - docker-compose.yml, docker-compose.yaml
+    - package.json, pyproject.toml, requirements.txt
+    - prisma/schema.prisma, migrations/*, config/*
+    - Key API route files, service configuration files
+
+    **Pass 2 - Deep File Reading:**
+    1) Use GitLab File Reader to open each shortlisted file
+    2) Extract relevant code snippets and configuration
+    3) Analyze content for feature-related patterns
+    4) Identify technical stack signals (database, ORM, search engine, etc.)
+    5) Document specific citations with exact file paths
+
+    **Critical Requirements:**
+    - NEVER fabricate or guess file paths
+    - If search returns zero hits: fallback to reading root README, service config, migrations folder, API routes
+    - Every piece of evidence must have a real file path citation
+    - Track technical stack indicators for architecture understanding
+  expected_output: |-
+    Structured JSON output for each repository processed:
+
+    ```json
+    {
+      "repo": "group/project-name",
+      "project_id": "12345",
+      "ref": "main",
+      "evidence": [
+        {
+          "file_path": "src/services/search/SearchService.js",
+          "why_relevant": "Contains neighborhood-based search filtering logic",
+          "key_findings": [
+            "Implements geohash-based location filtering",
+            "Rating aggregation queries for listings",
+            "Search result ranking by distance + rating"
+          ],
+          "citations": ["group/project-name@main:src/services/search/SearchService.js"]
+        },
+        {
+          "file_path": "migrations/20230815_add_neighborhood_ratings.sql",
+          "why_relevant": "Database schema for neighborhood rating system",
+          "key_findings": [
+            "neighborhood_ratings table with composite indexes",
+            "Foreign key relationship to listings table"
+          ],
+          "citations": ["group/project-name@main:migrations/20230815_add_neighborhood_ratings.sql"]
+        }
+      ],
+      "detected_signals": {
+        "db": ["postgresql"],
+        "orm": ["prisma"],
+        "search": ["elasticsearch"],
+        "feature_flags": ["unknown"],
+        "geo": ["postgis", "geohash"]
+      },
+      "evidence_count": 2,
+      "fallback_used": false,
+      "search_hits": 15
+    }
+    ```
+
+    **Quality Assurance:**
+    - evidence_count reflects actual evidence gathered
+    - citations array contains real, accessible file paths
+    - detected_signals help understand technical architecture
+    - fallback_used indicates if search failed and manual file reading was needed
+  agent: repository_scout
+  context:
+  - repository_inventory_and_candidate_selection
+evidence_gate_fail_or_escalate:
+  description: |-
+    Act as a critical quality control gate that aggregates evidence from all repository scouts and makes intelligent decisions about proceeding or failing.
+
+    **AGGREGATION PHASE:**
+    1) Collect evidence outputs from ALL repository scouts in the previous task
+    2) Compute aggregate metrics:
+       - total_evidence_count (sum of all evidence_count fields)
+       - repos_scanned (number of repositories processed)
+       - files_read (total files examined across all repos)
+       - repos_with_evidence (repos that returned > 0 evidence)
+       - average_evidence_per_repo
+
+    **DECISION GATE LOGIC:**
+
+    **SCENARIO A - Zero Evidence (STOP):**
+    If total_evidence_count == 0:
+    - DO NOT proceed to synthesis or complexity analysis
+    - Generate "Tooling/Scope Failure Report" containing:
+      - Complete list of repositories scanned with project_ids
+      - Search queries and keywords used
+      - GitLab search API responses (hits/misses)
+      - Root cause analysis (permissions, scope, API limits)
+      - Actionable next steps for user:
+        * Verify gitlab_group_path has accessible repositories
+        * Expand max_projects parameter
+        * Confirm search scope includes code content (not just names)
+        * Check GitLab API permissions and rate limits
+        * Consider providing specific project_ids instead of group search
+    - TERMINATE workflow with diagnostic report
+
+    **SCENARIO B - Weak Evidence (ESCALATE):**
+    If total_evidence_count > 0 BUT < 5 files total:
+    - Log escalation trigger
+    - Increase max_files_per_project by +5 for retry
+    - Select top 3 repositories with highest evidence_count for focused re-scan
+    - Add MR (Merge Request) pattern matching to search strategy
+    - Re-execute Two-Pass Evidence Retrieval on selected repos only
+    - If retry still yields weak evidence, proceed but flag as "LIMITED_EVIDENCE"
+
+    **SCENARIO C - Sufficient Evidence (PROCEED):**
+    If total_evidence_count >= 5:
+    - Log success metrics
+    - Prepare aggregated evidence summary for synthesis tasks
+    - Continue to next phase
+
+    **ERROR HANDLING:**
+    - If any repository scout failed completely, document the failure
+    - Track which repos had fallback procedures triggered
+    - Report any GitLab API errors or timeouts
+  expected_output: |-
+    **SUCCESS CASE - Evidence Summary:**
+    ```json
+    {
+      "gate_decision": "PROCEED",
+      "metrics": {
+        "total_evidence_count": 47,
+        "repos_scanned": 12,
+        "files_read": 89,
+        "repos_with_evidence": 9,
+        "average_evidence_per_repo": 5.2
+      },
+      "top_evidence_repos": [
+        {"repo": "group/api-service", "evidence_count": 12, "signals": ["postgresql", "redis"]},
+        {"repo": "group/search-service", "evidence_count": 8, "signals": ["elasticsearch", "geohash"]}
+      ],
+      "proceed_to_synthesis": true
+    }
+    ```
+
+    **FAILURE CASE - Diagnostic Report:**
+    ```json
+    {
+      "gate_decision": "STOP",
+      "failure_type": "ZERO_EVIDENCE",
+      "metrics": {
+        "total_evidence_count": 0,
+        "repos_scanned": 8,
+        "files_read": 0,
+        "search_queries_attempted": 24
+      },
+      "diagnostic_report": {
+        "repos_attempted": ["group/repo1", "group/repo2"],
+        "search_results": {"hits": 0, "api_errors": ["403 Forbidden"]},
+        "root_causes": ["GitLab search permissions insufficient", "Repository code not indexed"],
+        "recommended_actions": [
+          "Verify GitLab API token has 'read_repository' scope",
+          "Check if repositories have searchable code content",
+          "Try expanding gitlab_group_path or providing specific project_ids",
+          "Increase max_projects from 10 to 25"
+        ]
+      },
+      "terminate_workflow": true
+    }
+    ```
+
+    **ESCALATION CASE - Retry Report:**
+    ```json
+    {
+      "gate_decision": "ESCALATE",
+      "escalation_reason": "WEAK_EVIDENCE",
+      "retry_parameters": {
+        "max_files_per_project": 15,
+        "focused_repos": ["group/core-api", "group/user-service", "group/search-engine"],
+        "added_patterns": ["MR_descriptions", "feature_flag_usage"]
+      },
+      "retry_results": {
+        "additional_evidence": 8,
+        "total_evidence_after_retry": 12,
+        "proceed_with_warning": "LIMITED_EVIDENCE"
+      }
+    }
+    ```
+  agent: quality_gate_critic
+  context:
+  - two_pass_evidence_retrieval
+mr_issue_similarity_mining:
+  description: "Mine GitLab merge requests and issues to discover prior similar work
+    that can accelerate development by revealing existing implementations, patterns,
+    and approaches.\n\n**SCOPE LOCK**: Only mine MRs/issues from these 6 repositories
+    (radical-app group): APIv3, Admin catalog, Next, Pages-Next, Front end monorepo,
+    booking. Do NOT access any other repositories.\n\n**REPOSITORY SELECTION:**\n1)
+    Use the top candidate repositories from Evidence Gate (repos with highest evidence_count)\n2)
+    Focus on repositories that showed signals for: database, search, geolocation,
+    or API patterns\n3) If Evidence Gate escalated, use the focused_repos list from
+    the retry\n\n**MR MINING
+    STRATEGY:**\nUse GitLab MR List Tool on each selected repository:\n- Search MR
+    titles and descriptions for target keywords:\n  - Core: rating, review, filter,
+    sort, ranking, search\n  - Geo: geo, location, neighborhood, proximity, distance
+    \ \n  - Business: availability, booking, recommendation, matching\n  - Technical:
+    index, query, algorithm, scoring\n- Include both merged and closed MRs (they contain
+    implementation details)\n- Prioritize MRs from last 2 years for relevance\n- Capture
+    MRs with 5+ file changes (substantial implementations)\n\n**ISSUE MINING STRATEGY:**\nUse
+    GitLab Issue List Tool on each selected repository:\n- Search issue titles/descriptions
+    for same keyword set\n- Focus on closed issues with linked MRs (completed work)\n-
+    Capture feature requests that match the scope\n- Look for performance discussions
+    (search optimization, geo queries)\n\n**ANALYSIS PER MR/ISSUE:**\nFor each relevant
+    item found:\n1) Extract MR/Issue ID, title, author, merge/close date\n2) Summarize
+    what was implemented or discussed\n3) Identify referenced files from MR diff (if
+    accessible via GitLab File Reader)\n4) Extract key technical keywords and patterns\n5)
+    Assess relevance score (1-10) based on keyword matches\n6) Note any database schema
+    changes, API endpoints, or search implementations\n\n**PATTERN DETECTION:**\nLook
+    for recurring themes:\n- Database schemas for ratings/reviews\n- Search/filter
+    API designs  \n- Geospatial query patterns\n- Ranking algorithms mentioned\n-
+    Performance optimizations\n\n**FAILURE HANDLING:**\n- If GitLab MR/Issue API calls
+    fail, document the error\n- If no relevant MRs/issues found, report \"NO_PRIOR_WORK\"
+    \n- Track API rate limits and pagination properly"
+  expected_output: "**HIGH VALUE DISCOVERY:**\n```json\n{\n  \"mining_results\": {\n
+    \   \"total_mrs_scanned\": 127,\n    \"total_issues_scanned\": 89,\n    \"relevant_items_found\":
+    12,\n    \"top_repos_with_similar_work\": [\"group/api-core\", \"group/search-service\"]\n
+    \ },\n  \"similar_work\": [\n    {\n      \"repo\": \"group/api-core\", \n      \"type\":
+    \"MR\",\n      \"mr_or_issue\": \"!1847\",\n      \"title\": \"Add neighborhood-based
+    restaurant filtering\",\n      \"summary\": \"Implemented geospatial queries for
+    filtering restaurants by distance and neighborhood boundaries using PostGIS\",\n
+    \     \"referenced_files\": [\"api/restaurants/geo_filter.py\", \"migrations/add_geo_indexes.sql\"],\n
+    \     \"why_relevant\": \"Direct match - geospatial filtering for location-based
+    services\",\n      \"relevance_score\": 9,\n      \"technical_patterns\": [\"postgis_queries\",
+    \"distance_calculations\", \"spatial_indexes\"],\n      \"date\": \"2023-11-15\"\n
+    \   },\n    {\n      \"repo\": \"group/search-service\",\n      \"type\": \"Issue\",
+    \n      \"mr_or_issue\": \"#892\",\n      \"title\": \"Implement rating aggregation
+    and sorting for search results\",\n      \"summary\": \"Feature request for weighted
+    rating calculations and multi-criteria sorting in search API\",\n      \"linked_mr\":
+    \"!456\",\n      \"why_relevant\": \"Rating aggregation algorithms and search
+    result ranking logic\",\n      \"relevance_score\": 8,\n      \"technical_patterns\":
+    [\"weighted_averages\", \"elasticsearch_sorting\", \"rating_algorithms\"],\n      \"date\":
+    \"2023-08-22\"\n    }\n  ],\n  \"discovered_patterns\": {\n    \"database_schemas\":
+    [\n      \"ratings table with user_id, item_id, score, created_at\",\n      \"geospatial
+    indexes using PostGIS for location queries\"\n    ],\n    \"api_endpoints\": [\n
+    \     \"/api/v1/search?sort=rating&geo=lat,lng,radius\",\n      \"/api/v1/ratings/<item_id>/aggregate\"\n
+    \   ],\n    \"common_algorithms\": [\n      \"Haversine distance calculations\",\n
+    \     \"Weighted rating averages with recency decay\",\n      \"Elasticsearch
+    geo_distance sorting\"\n    ]\n  },\n  \"recommendations\": [\n    \"Reuse PostGIS
+    geo-filtering patterns from group/api-core MR !1847\",\n    \"Adapt rating aggregation
+    algorithm from group/search-service Issue #892\",\n    \"Consider performance
+    optimizations mentioned in group/api-core MR !2103\"\n  ]\n}\n```\n\n**NO PRIOR
+    WORK CASE:**\n```json\n{\n  \"mining_results\": {\n    \"total_mrs_scanned\":
+    45,\n    \"total_issues_scanned\": 32,  \n    \"relevant_items_found\": 0,\n    \"search_coverage\":
+    [\"group/repo1\", \"group/repo2\"]\n  },\n  \"similar_work\": [],\n  \"status\":
+    \"NO_PRIOR_WORK\",\n  \"implications\": [\n    \"This appears to be a greenfield
+    implementation\",\n    \"No existing patterns to reuse - will need custom development\",\n
+    \   \"Opportunity to establish new patterns for future projects\"\n  ],\n  \"fallback_recommendations\":
+    [\n    \"Search external resources (Stack Overflow, GitHub) for similar implementations\",\n
+    \   \"Consider industry-standard approaches for rating/review systems\", \n    \"Design
+    with reusability in mind for future similar features\"\n  ]\n}\n```"
+  agent: repository_scout
+  context:
+  - evidence_gate_fail_or_escalate
+plan_large_scale_repository_strategy:
+  description: Create an adaptive research strategy optimized for large repositories
+    analyzing {feature_idea}. Define evidence sufficiency thresholds, two-pass analysis
+    workflow (broad→shortlist→deep), bootstrap system mapping priorities, and intelligent
+    stop conditions. Establish cache utilization strategy and incremental update protocols
+    for efficiency.
+  expected_output: 'Large-scale repository strategy containing: 1) Evidence sufficiency
+    thresholds and stop conditions, 2) Two-pass analysis workflow definition (broad
+    scan limits, shortlist criteria, deep read priorities), 3) System mapping bootstrap
+    strategy using CODEOWNERS/README/package structure, 4) Cache utilization and refresh
+    protocols, 5) Fallback strategies for different repository sizes and API limitations,
+    6) Quality vs efficiency trade-off framework'
+  agent: planner_and_orchestrator
+  context:
+  - evidence_gate_fail_or_escalate
+  - mr_issue_similarity_mining
+execute_two_pass_analysis_with_intelligent_stopping:
+  description: 'Execute optimized two-pass repository analysis for large codebases.
+    **SCOPE LOCK**: Only analyze these 6 repositories (radical-app group): APIv3,
+    Admin catalog, Next, Pages-Next, Front end monorepo, booking.
+    **Pass 1 (Broad Search)**: Use search APIs to identify relevant files/patterns
+    with query limits (max 200 results). **Pass 2 (Shortlist + Deep Read)**: Score
+    and prioritize findings, then deep-read top N files (configurable, default 25)
+    most relevant to {feature_idea}. Implement intelligent stopping conditions: sufficient
+    evidence threshold, diminishing returns detection, API rate limit management.
+    Use system map to guide search queries and prioritization.
+    **ANTI-HALLUCINATION**: You MUST call file-reading tools before claiming any file
+    contains specific content. If a tool returns 404 or error, report NOT_FOUND.'
+  expected_output: 'Two-pass analysis report with: 1) Pass 1 broad search results
+    and query effectiveness, 2) Shortlist scoring methodology and top N selection
+    rationale, 3) Deep read findings from prioritized files, 4) Stop condition triggers
+    and evidence sufficiency assessment, 5) Coverage gaps and confidence levels, 6)
+    Efficiency metrics (API calls, files analyzed, time spent)'
+  agent: repository_scout
+  context:
+  - plan_large_scale_repository_strategy
+bootstrap_repository_system_map:
+  description: 'Create a comprehensive system map of the target GitLab repositories
+    by analyzing key structural files. **SCOPE LOCK**: Only map these 6 repositories
+    (radical-app group): APIv3, Admin catalog, Next, Pages-Next, Front end monorepo,
+    booking. Analyze: CODEOWNERS (ownership patterns), README/docs (architecture
+    overview), package.json/Gemfile/requirements.txt (dependencies), directory
+    structure (modules/components), and CI/CD configs (build/deploy patterns).
+    This creates a foundation for targeted analysis.
+    **ANTI-HALLUCINATION**: Every structural claim must come from an actual tool call.
+    If a file does not exist, report NOT_FOUND — do not guess its content.'
+  expected_output: 'Repository system map containing: 1) Ownership patterns from CODEOWNERS
+    analysis, 2) Architecture overview from documentation, 3) Dependency graph and
+    technology stack, 4) Module/component structure mapping, 5) Build and deployment
+    patterns, 6) Critical path identification for {feature_idea} integration, 7) Knowledge
+    gaps requiring targeted investigation'
+  agent: repository_scout
+  context:
+  - plan_large_scale_repository_strategy
+define_evidence_sufficiency_and_stop_conditions:
+  description: Establish intelligent stopping criteria and evidence sufficiency thresholds
+    for {feature_idea} analysis. Define when to transition between analysis phases
+    (system map → broad search → shortlist → deep read), when analysis is complete,
+    and how to balance quality vs efficiency. Consider repository size, feature complexity,
+    time constraints, and API limitations.
+  expected_output: 'Evidence sufficiency framework containing: 1) Stop condition triggers
+    for each analysis phase, 2) Evidence quality thresholds and confidence scoring,
+    3) Diminishing returns detection algorithms, 4) Repository size-based optimization
+    parameters (small/medium/large/enterprise), 5) Time-boxed analysis protocols,
+    6) Fallback strategies when primary evidence is insufficient, 7) Quality assurance
+    checkpoints and minimum evidence requirements'
+  agent: cache_intelligence_manager
+  context:
+  - plan_large_scale_repository_strategy
+create_repo_summary_index_cache:
+  description: 'Generate a comprehensive repository summary index optimized for future
+    analysis caching. Extract and index: key architectural patterns, dependency relationships,
+    common code patterns, integration points, recent changes (commits/MRs), testing
+    patterns, and deployment flows. Structure data for incremental updates and fast
+    retrieval in subsequent analyses.'
+  expected_output: 'Repository summary index containing: 1) Architectural pattern
+    catalog with examples, 2) Dependency graph with version tracking, 3) Code pattern
+    index (functions, classes, APIs), 4) Integration point mapping, 5) Recent activity
+    summary (30-90 days), 6) Testing and deployment pattern analysis, 7) Cache metadata
+    (freshness, coverage, update requirements), 8) Incremental update strategy for
+    daily/weekly refresh'
+  agent: repository_scout
+  context:
+  - bootstrap_repository_system_map
+validate_cache_quality_and_completeness:
+  description: Validate the repository summary index cache and evidence collection
+    for completeness, accuracy, and freshness. Ensure cache covers critical analysis
+    areas, verify evidence quality meets thresholds, and identify any gaps requiring
+    additional investigation or cache refresh.
+  expected_output: 'Cache validation report containing: 1) Cache completeness assessment
+    against analysis requirements, 2) Evidence quality verification and confidence
+    scoring, 3) Freshness analysis and update recommendations, 4) Coverage gap identification
+    with priority levels, 5) Cache optimization suggestions for future analyses, 6)
+    Incremental update strategy validation, 7) Go/No-go decision for proceeding with
+    current cache state'
+  agent: cache_intelligence_manager
+  context:
+  - create_repo_summary_index_cache
+  - define_evidence_sufficiency_and_stop_conditions
+evidence_gate_validation:
+  description: 'Perform strict evidence validation with **MANDATORY CITATION VERIFICATION**
+    on all repository scanning findings before synthesis. Validate: **Citation Completeness**
+    (every technical claim must reference specific files/lines/commits), **Path/Module
+    Verification** (all referenced paths must exist in repository), **Evidence Quality
+    Assessment** (data quality and confidence levels), **Contradiction Detection**
+    (consistency across findings), **Overconfidence Prevention** (confidence levels
+    must match evidence strength). **FAIL THE RUN** if critical validation issues
+    are found.'
+  expected_output: 'Evidence validation report with **PASS/FAIL decision** containing:
+    1) Citation completeness audit (% claims with valid references), 2) Path/module
+    verification results (invalid references flagged), 3) Confidence level assessment
+    vs evidence strength, 4) Identified contradictions requiring resolution, 5) Evidence
+    gaps requiring additional investigation, 6) Verification status with **RUN CONTINUATION
+    DECISION**, 7) For LOW CONFIDENCE: Required "Next Discovery Steps" and "Engineering
+    Questions"'
+  agent: quality_gate_critic
+  context:
+  - execute_two_pass_analysis_with_intelligent_stopping
+  - validate_cache_quality_and_completeness
+synthesis_tech_lead_evidence_based_hypothesis_and_complexity:
+  description: "Synthesize an implementation hypothesis for {feature_idea} using ONLY
+    gathered evidence with mandatory citations. Eliminate architectural speculation
+    without concrete backing.\n\n**STRICT EVIDENCE REQUIREMENTS:**\n- Every architectural
+    claim must cite at least one evidence item (repo@ref:path)\n- Clearly separate:
+    \"Evidence\" (what was observed), \"Hypothesis\" (what it implies), \"Unknowns\"
+    (could not verify)\n- No speculation beyond what evidence directly supports\n-
+    Reference specific file paths, code snippets, database schemas found during evidence
+    retrieval\n\n**EVIDENCE-BASED SYNTHESIS STRUCTURE:**\n\n**1) ARCHITECTURE EVIDENCE
+    REVIEW:**\nFrom the evidence collected in previous tasks, catalog:\n- Database
+    patterns found: schemas, migrations, indexes (cite specific files)\n- API endpoints
+    discovered: routing patterns, parameter handling (cite specific files)  \n- Search
+    implementations: engines used, query patterns, ranking logic (cite specific files)\n-
+    Geolocation handling: PostGIS usage, coordinate systems, distance calculations
+    (cite specific files)\n- Rating/review systems: storage patterns, aggregation
+    methods (cite specific files)\n\n**2) IMPLEMENTATION HYPOTHESIS (Evidence → Inference):**\nFor
+    each aspect of {feature_idea}:\n- What the evidence suggests about implementation
+    approach\n- Which existing patterns can be extended/reused\n- Integration points
+    that evidence supports\n- Technical stack alignment based on discovered signals\n\n**3)
+    EVIDENCE GAPS → UNKNOWNS:**\nExplicitly identify what could NOT be determined
+    from evidence:\n- Database schema requirements (if not found)\n- API design patterns
+    (if unclear from existing code)\n- Performance characteristics (if no metrics
+    found)\n- Security patterns (if authentication/authorization unclear)\n\n**4)
+    COMPLEXITY ASSESSMENT WITH EVIDENCE CITATIONS:**\nApply complexity rubric with
+    evidence backing each score:\n- **Scope Complexity**: Based on integration points
+    found in evidence\n- **Technical Unknowns**: Based on gaps in evidence vs feature
+    requirements  \n- **Architecture Change Impact**: Based on existing patterns that
+    need modification\n- **Migration Requirements**: Based on database schemas and
+    API patterns found\n- **Testing Complexity**: Based on existing test patterns
+    discovered\n- **Backwards Compatibility**: Based on API versioning patterns found\n-
+    **Implementation Risk**: Based on code quality and patterns observed\n- **Performance
+    Implications**: Based on existing query patterns and infrastructure\n- **Security
+    Considerations**: Based on authentication patterns found\n- **Rollout Complexity**:
+    Based on deployment patterns discovered\n\n**QUALITY CONTROLS:**\n- If insufficient
+    evidence for any section: Write \"UNKNOWN - Insufficient Evidence\"\n- Include
+    \"Next Discovery Steps\" for evidence gaps\n- Every technical claim requires a
+    citation to actual repository evidence\n- Confidence levels must match evidence
+    strength (High/Medium/Low)"
+  expected_output: "**EVIDENCE-BACKED SYNTHESIS REPORT:**\n\n## Evidence Foundation
+    Summary\n```\nTotal Evidence Items: 47\nRepositories with Evidence: 9/12  \nKey
+    Technology Signals: postgresql, elasticsearch, postgis, redis\nEvidence Quality:
+    HIGH/MEDIUM/LOW\n```\n\n## 1. ARCHITECTURE EVIDENCE REVIEW\n\n**Database Patterns
+    Found:**\n- `group/api-core@main:migrations/20231115_ratings_schema.sql` - Composite
+    ratings table with user_id, item_id, score, created_at\n- `group/search@main:config/database.yml`
+    - PostgreSQL primary with PostGIS extensions enabled\n- EVIDENCE: Proven rating
+    storage patterns exist\n\n**API Endpoint Patterns:**\n- `group/api-core@main:app/controllers/search_controller.rb`
+    - `/api/v1/search?sort=rating&geo=lat,lng,radius` endpoint  \n- `group/frontend@main:src/api/ratings.js`
+    - Rating aggregation endpoints with averaging logic\n- EVIDENCE: Geospatial search
+    APIs already implemented\n\n**Search Implementation:**\n- `group/search-service@main:lib/elasticsearch_queries.rb`
+    - Elasticsearch geo_distance sorting implementation\n- EVIDENCE: Search infrastructure
+    supports location-based ranking\n\n**Geolocation Evidence:**\n- `group/api-core@main:lib/geo_utils.rb`
+    - Haversine distance calculations and PostGIS integration\n- EVIDENCE: Geospatial
+    capabilities operational\n\n## 2. IMPLEMENTATION HYPOTHESIS\n\n**Architecture
+    Approach (Evidence-Based):**\nBased on evidence from `group/api-core` and `group/search-service`,
+    the feature can leverage:\n- **Database Layer**: Extend existing ratings table
+    schema (evidence: ratings_schema.sql)\n- **Search Integration**: Build on Elasticsearch
+    geo_distance patterns (evidence: elasticsearch_queries.rb)  \n- **API Design**:
+    Follow established `/api/v1/search` patterns with geo parameters\n\n**Integration
+    Strategy:**\nEvidence suggests 3-tier integration:\n1. **Database**: PostGIS-enabled
+    PostgreSQL (confirmed in multiple configs)\n2. **Search**: Elasticsearch with
+    geo-distance sorting (active implementation found)\n3. **API**: RESTful endpoints
+    following existing /api/v1/ patterns\n\n## 3. UNKNOWNS - INSUFFICIENT EVIDENCE\n\n**UNKNOWN
+    - Database Schema Extensions:**\n- Specific neighborhood boundary definitions
+    (no geo_boundaries table found)\n- Rating aggregation triggers (no stored procedures
+    discovered)\n- Next Discovery Steps: Search for spatial indexes, neighborhood
+    mapping tables\n\n**UNKNOWN - Performance Characteristics:**  \n- Query performance
+    at scale (no benchmarking data found)\n- Elasticsearch index sizing for geo queries\n-
+    Next Discovery Steps: Analyze existing query logs, performance monitoring configs\n\n**UNKNOWN
+    - Business Logic:**\n- Rating calculation algorithms (weighted averages, decay
+    factors)\n- Neighborhood boundary determination logic  \n- Next Discovery Steps:
+    Review business logic in service layers, config files\n\n## 4. COMPLEXITY ASSESSMENT
+    (Evidence-Driven)\n\n| Dimension | Score | S/M/L/XL | Evidence Citation | Confidence
+    |\n|-----------|-------|----------|-------------------|------------|\n| **Scope
+    Complexity** | 6 | M | 3 repositories, 5 integration points found | HIGH |\n|
+    **Technical Unknowns** | 4 | S | Most patterns exist in codebase | MEDIUM |\n|
+    **Architecture Impact** | 5 | M | Extends existing search/rating systems | HIGH
+    |  \n| **Migration Requirements** | 3 | S | Rating table exists, needs geo indexes
+    | HIGH |\n| **Testing Complexity** | 7 | M | No geo test patterns found | LOW
+    |\n| **Backwards Compatibility** | 4 | S | API versioning patterns established
+    | MEDIUM |\n| **Implementation Risk** | 5 | M | Proven patterns but new geo logic
+    | MEDIUM |\n| **Performance Implications** | 8 | L | Geo queries + aggregations
+    complex | LOW |\n| **Security Considerations** | UNKNOWN | ? | No auth patterns
+    for geo data found | LOW |\n| **Rollout Complexity** | 6 | M | Feature flag patterns
+    discovered | MEDIUM |\n\n**Overall Classification: MEDIUM (M)**\n\n**Key Complexity
+    Drivers (Evidence-Based):**\n1. Geospatial query optimization (limited performance
+    evidence)\n2. Rating aggregation at neighborhood scale (no existing patterns)\n3.
+    Testing geo-distributed scenarios (no test infrastructure found)\n\n**Evidence-Based
+    Recommendations:**\n1. Reuse PostGIS patterns from `group/api-core@main:lib/geo_utils.rb`\n2.
+    Extend Elasticsearch geo_distance from `group/search-service`  \n3. Investigate
+    security patterns for location data (evidence gap)\n\n**Required Next Discovery
+    Steps:**\n1. Search for geo data security/privacy patterns\n2. Analyze performance
+    characteristics of existing geo queries\n3. Review neighborhood boundary definition
+    approaches"
+  agent: synthesis_tech_lead
+  context:
+  - evidence_gate_validation
+execute_systematic_complexity_assessment:
+  description: 'Apply the comprehensive 10-dimensional complexity assessment rubric
+    to {feature_idea} using validated technical findings. Score each dimension (0-10
+    scale) with S/M/L/XL classification: **Scope Complexity** (feature breadth, integration
+    points), **Technical Unknowns** (research needed, proof-of-concept requirements),
+    **Architecture Change Impact** (existing system modifications), **Migration Requirements**
+    (data/schema/API migrations), **Testing Complexity** (test coverage, automation,
+    scenarios), **Backwards Compatibility** (breaking changes, deprecation paths),
+    **Implementation Risk** (failure probability, rollback complexity), **Performance
+    Implications** (scalability, resource impact), **Security Considerations** (attack
+    vectors, compliance), **Rollout Complexity** (deployment strategy, feature flags).
+    Each score must include evidence citations, confidence levels (High/Medium/Low),
+    and detailed justifications.'
+  expected_output: 'Comprehensive complexity assessment matrix containing: 1) 10-dimensional
+    scoring table (0-10 + S/M/L/XL) with evidence citations, 2) Confidence ratings
+    for each dimension assessment, 3) Overall complexity classification and risk profile,
+    4) Key complexity drivers and risk factors, 5) Uncertainty areas requiring additional
+    investigation, 6) Complexity-driven implementation recommendations, 7) Risk mitigation
+    strategies for high-complexity dimensions'
+  agent: complexity_assessment_specialist
+  context:
+  - synthesis_tech_lead_evidence_based_hypothesis_and_complexity
+generate_product_implementation_variants:
+  description: 'Create multiple implementation variants for {feature_idea} based on
+    technical feasibility analysis. Optimize each variant for different priorities:
+    speed-to-market, maintainability, scalability, and user experience. Provide clear
+    trade-off analysis for each approach.'
+  expected_output: 'Product implementation variants document with: 1) 3-5 distinct
+    implementation approaches, 2) Priority-based optimization (speed, maintainability,
+    scalability, UX), 3) Trade-off analysis for each variant, 4) Resource requirements
+    and timelines, 5) Risk-benefit assessment, 6) Recommended decision framework for
+    stakeholders'
+  agent: product_optimizer
+  context:
+  - execute_systematic_complexity_assessment
+quality_gate_citations_assumption_detection:
+  description: "Execute rigorous multi-layer validation with **FAIL CONDITIONS** for
+    {feature_idea} analysis, including citation verification, path/module validation,
+    contradiction detection, confidence-evidence alignment, and **ASSUMPTION DETECTION**
+    to prevent spec hallucination. Enforce quality standards that can halt the automation
+    if critical issues are found.\n\n**CORE VALIDATION LAYERS:**\n\n**1) CITATION
+    COMPLETENESS AUDIT:**\n- Every technical claim must reference specific files/lines/commits\n-
+    All file paths must use `repo@ref:path` format (e.g., `group/api-core@main:src/search.rb`)\n-
+    No invented or non-existent references\n- Path/module verification against actual
+    repository structure\n\n**2) ASSUMPTION DETECTION & SPEC HALLUCINATION PREVENTION:**\n**FAIL
+    CONDITIONS:**\n- Any numeric threshold/guardrail stated as fact unless it appears
+    in:\n  a) The {feature_idea} input requirements, OR\n  b) Evidence from repository
+    code (config files, constants, etc.)\n\n**Examples of FORBIDDEN spec hallucination:**\n-
+    \"Rate limit of 100 requests/minute\" (unless found in code/config)  \n- \"Maximum
+    50 neighborhoods per search\" (unless specified in input)\n- \"Timeout after 30
+    seconds\" (unless discovered in existing code)\n- \"Cache TTL of 1 hour\" (unless
+    found in configuration files)\n\n**REQUIRED REWRITE for non-evidenced thresholds:**\n```\n❌
+    BEFORE: \"Implement rate limiting at 100 requests/minute\"\n✅ AFTER: \"Implement
+    rate limiting (ASSUMPTION: 100 req/min - Product decision needed)\"\n\n❌ BEFORE:
+    \"Search results limited to 50 items maximum\"  \n✅ AFTER: \"Search results pagination
+    (ASSUMPTION: 50 item limit - Engineering verification needed)\"\n```\n\n**3) CONTRADICTION
+    DETECTION:**\n- Consistency across all analysis phases\n- Technical claims that
+    conflict with evidence\n- Confidence levels that don't match evidence strength\n\n**4)
+    CONFIDENCE CALIBRATION:**\n- High confidence requires substantial proof\n- Evidence
+    must support stated confidence levels  \n- Overconfidence prevention (high confidence
+    without substantial backing)\n\n**5) EVIDENCE-CLAIM ALIGNMENT:**\n- Every complexity
+    score must have evidence justification\n- Implementation approaches must be backed
+    by repository patterns\n- Risk assessments must reference actual code/architecture
+    findings\n\n**VALIDATION OUTPUTS:**\n\n**PASS SCENARIO:**\n- All file paths in
+    `repo@ref:path` format\n- All numeric thresholds either evidenced or marked as
+    assumptions\n- Citations complete and verifiable\n- Confidence levels match evidence
+    strength\n- No logical contradictions\n\n**FAIL SCENARIO - ASSUMPTION VIOLATIONS:**\n-
+    Numeric thresholds presented as facts without evidence\n- Missing `ASSUMPTION:`
+    prefixes where required\n- Spec details not backed by input or repository findings\n\n**FAIL
+    SCENARIO - CITATION VIOLATIONS:**  \n- File paths without proper `repo@ref:path`
+    format\n- References to non-existent files or modules\n- Technical claims without
+    repository evidence\n\n**REMEDIATION AUTHORITY:**\n- **VETO POWER** over entire
+    analysis if quality standards aren't met\n- Authority to **FAIL THE ENTIRE RUN**
+    for critical validation issues\n- For low-confidence conclusions, mandate follow-up
+    investigation requirements\n- Force assumption marking and decision owner identification"
+  expected_output: "**VALIDATION DECISION: PASS/FAIL**\n\n## Citation Audit Results\n```\n✅
+    File Path Format: 47/47 paths use repo@ref:path format  \n✅ Path Verification:
+    All referenced files exist in repositories\n✅ Citation Coverage: 94% of technical
+    claims have backing evidence\n❌ Missing Citations: 3 complexity scores lack evidence
+    justification\n```\n\n## Assumption Detection Results  \n```\n❌ SPEC HALLUCINATION
+    DETECTED: 5 violations found\n\nVIOLATION 1: \"Rate limit API calls to 100 requests/minute\"\n-
+    Source: Technical Feasibility Synthesis, Section 3.2  \n- Evidence Check: NOT
+    found in {feature_idea} input OR repository configs\n- Required Fix: \"Rate limit
+    API calls (ASSUMPTION: 100 req/min - Product decision needed)\"\n\nVIOLATION 2:
+    \"Search results capped at 50 neighborhoods maximum\"  \n- Source: Complexity
+    Assessment, Performance section\n- Evidence Check: No evidence in search-service
+    configuration files\n- Required Fix: \"Search pagination needed (ASSUMPTION: 50
+    result limit - Engineering verification needed)\"\n\nVIOLATION 3: \"Cache neighborhood
+    ratings for 1 hour TTL\"\n- Source: Implementation Variants, Caching Strategy\n-
+    Evidence Check: No TTL values found in Redis/cache configurations  \n- Required
+    Fix: \"Cache neighborhood ratings (ASSUMPTION: 1hr TTL - Engineering verification
+    needed)\"\n```\n\n## Confidence Calibration Assessment\n```  \n✅ Evidence-Confidence
+    Alignment: 8/10 assessments properly calibrated\n❌ Overconfidence Issues: 2 \"HIGH\"
+    confidence scores with LIMITED evidence\n- Complexity Assessment: Security dimension
+    rated HIGH with LOW evidence\n- Technical Feasibility: Performance claims HIGH
+    confidence, MEDIUM evidence\n```\n\n## Contradiction Analysis\n```\n✅ Cross-Phase
+    Consistency: No logical conflicts detected\n✅ Evidence Coherence: Repository findings
+    align across all analysis phases  \n```\n\n## FINAL DECISION\n\n**STATUS: FAIL
+    - Assumption Violations**\n\n**Critical Issues Requiring Remediation:**\n1. **5
+    Spec Hallucination Violations** - Numeric thresholds presented as facts\n2. **2
+    Overconfidence Issues** - Confidence exceeds evidence strength  \n3. **3 Missing
+    Evidence Citations** - Complexity scores lack backing\n\n**Required Actions Before
+    Proceeding:**\n1. Rewrite all non-evidenced thresholds with ASSUMPTION prefixes\n2.
+    Add decision owner labels: \"Product decision needed\" vs \"Engineering verification
+    needed\"  \n3. Reduce confidence levels to match evidence strength\n4. Add evidence
+    citations for unsupported complexity scores\n\n**For LOW CONFIDENCE Scenarios:**\n```\nNext
+    Discovery Steps: [Specific areas requiring additional investigation]\nEngineering
+    Questions: [Technical questions requiring expert input]  \nProduct Decisions:
+    [Business logic requiring stakeholder input]\n```\n\n**Quality Score: 6.2/10 (Below
+    7.0 threshold for auto-approval)**"
+  agent: quality_gate_critic
+  context:
+  - generate_product_implementation_variants
+generate_discovery_action_plan:
+  description: "**TRIGGERED FOR LOW-CONFIDENCE FINDINGS**: Create detailed follow-up
+    investigation plan for {feature_idea} when evidence is insufficient or confidence
+    levels are below thresholds. Define specific next steps, engineering questions,
+    additional research requirements, and investigation priorities to improve confidence
+    and evidence quality in future analysis cycles."
+  expected_output: 'Discovery action plan containing: 1) **Next Discovery Steps**
+    (specific repository areas to investigate, missing evidence to gather, additional
+    analysis methods), 2) **Engineering Questions** (technical questions requiring
+    expert input, architectural decisions needing clarification), 3) **Research Priorities**
+    (ranked list of investigation areas by importance), 4) **Evidence Gap Analysis**
+    (specific missing information and where to find it), 5) **Follow-up Analysis Strategy**
+    (improved approach for next iteration), 6) **Resource Requirements** (time, tools,
+    expertise needed), 7) **Success Criteria** (how to measure improved confidence
+    levels)'
+  agent: planner_and_orchestrator
+  context:
+  - quality_gate_citations_assumption_detection
+generate_comprehensive_final_report:
+  description: |-
+    Compile all validated analysis, complexity assessments, and implementation variants into final deliverable for {feature_idea} evaluation. Handle both **HIGH-CONFIDENCE COMPLETION** (comprehensive recommendations) and **LOW-CONFIDENCE CONDITIONAL** (discovery action plan) scenarios. Structure findings with complexity scores, confidence ratings, and next steps appropriate to evidence quality.
+
+    **SPECIAL HANDLING FOR INPUT VALIDATION FAILURES:**
+    If the context contains only input validation errors (missing GitLab scope), provide a concise failure summary instead of a full technical report. Focus on actionable next steps rather than extensive analysis of non-existent data.
+  expected_output: "**For HIGH CONFIDENCE - Full Technical Report:**\n1) Executive
+    summary with complexity scores (S/M/L/XL)\n2) Evidence-backed technical feasibility
+    with citations  \n3) Implementation variants with complexity trade-offs\n4) Risk
+    assessment with mitigation strategies\n5) Resource estimates with confidence bands\n6)
+    Decision framework and immediate next steps\n\n**For LOW CONFIDENCE - Discovery
+    Action Plan:**\n1) Current findings summary with confidence ratings\n2) Evidence
+    gaps and quality assessment\n3) Discovery action plan integration  \n4) Engineering
+    questions requiring resolution\n5) Recommended investigation approach\n6) Timeline
+    for follow-up analysis cycle\n\n**For INPUT VALIDATION FAILURE - Concise Error
+    Report:**\n```\n❌ ANALYSIS BLOCKED - Configuration Required\n\nIssue: Missing
+    required GitLab repository scope\n\nTo proceed with technical feasibility analysis:\n1.
+    Provide gitlab_group_path (e.g., \"company/platform\") \n   OR gitlab_project_ids
+    (e.g., \"12345,67890\")\n2. Ensure GitLab API access is configured\n3. Re-run
+    automation with repository scope\n\nExpected timeline after configuration: 30-60
+    minutes for full analysis\n```"
+  agent: planner_and_orchestrator
+  context:
+  - generate_discovery_action_plan
