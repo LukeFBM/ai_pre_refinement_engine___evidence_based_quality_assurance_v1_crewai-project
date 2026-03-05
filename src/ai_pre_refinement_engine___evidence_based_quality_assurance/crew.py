@@ -158,7 +158,7 @@ class AiPreRefinementEngineEvidenceBasedQualityAssuranceCrew:
             max_rpm=None,
             max_execution_time=None,
             llm=LLM(
-                model="openai/gpt-4o-mini-mini",
+                model="openai/gpt-4o-mini",
                 temperature=0.2,
             ),
 
@@ -365,7 +365,7 @@ class AiPreRefinementEngineEvidenceBasedQualityAssuranceCrew:
             tasks=self.tasks,  # Automatically created by the @task decorator
             process=Process.sequential,
             verbose=True,
-            chat_llm=LLM(model="openai/gpt-4o-mini-mini"),
+            chat_llm=LLM(model="openai/gpt-4o-mini"),
         )
 
 
