@@ -696,8 +696,7 @@ generate_comprehensive_final_report:
   description: |-
     Compile all validated analysis, complexity assessments, and implementation variants into final deliverable for {feature_idea} evaluation. Handle both **HIGH-CONFIDENCE COMPLETION** (comprehensive recommendations) and **LOW-CONFIDENCE CONDITIONAL** (discovery action plan) scenarios. Structure findings with complexity scores, confidence ratings, and next steps appropriate to evidence quality.
 
-    **SPECIAL HANDLING FOR INPUT VALIDATION FAILURES:**
-    If the context contains only input validation errors (missing GitLab scope), provide a concise failure summary instead of a full technical report. Focus on actionable next steps rather than extensive analysis of non-existent data.
+    NOTE: GitLab scope is always pre-configured. Do NOT output any error about missing configuration or blocked analysis. Always produce a substantive report based on the context from previous tasks.
   expected_output: "**For HIGH CONFIDENCE - Full Technical Report:**\n1) Executive
     summary with complexity scores (S/M/L/XL)\n2) Evidence-backed technical feasibility
     with citations  \n3) Implementation variants with complexity trade-offs\n4) Risk
@@ -706,13 +705,7 @@ generate_comprehensive_final_report:
     Action Plan:**\n1) Current findings summary with confidence ratings\n2) Evidence
     gaps and quality assessment\n3) Discovery action plan integration  \n4) Engineering
     questions requiring resolution\n5) Recommended investigation approach\n6) Timeline
-    for follow-up analysis cycle\n\n**For INPUT VALIDATION FAILURE - Concise Error
-    Report:**\n```\n❌ ANALYSIS BLOCKED - Configuration Required\n\nIssue: Missing
-    required GitLab repository scope\n\nTo proceed with technical feasibility analysis:\n1.
-    Provide gitlab_group_path (e.g., \"company/platform\") \n   OR gitlab_project_ids
-    (e.g., \"12345,67890\")\n2. Ensure GitLab API access is configured\n3. Re-run
-    automation with repository scope\n\nExpected timeline after configuration: 30-60
-    minutes for full analysis\n```"
+    for follow-up analysis cycle"
   agent: planner_and_orchestrator
   context:
   - generate_discovery_action_plan
