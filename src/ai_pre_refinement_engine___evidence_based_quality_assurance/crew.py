@@ -47,7 +47,7 @@ class AiPreRefinementEngineEvidenceBasedQualityAssuranceCrew:
             
             max_execution_time=None,
             llm=LLM(
-                model="openai/gpt-5.2-chat-latest",
+                model="openai/gpt-4o",
             ),
 
         )
@@ -80,7 +80,7 @@ class AiPreRefinementEngineEvidenceBasedQualityAssuranceCrew:
             
             max_execution_time=None,
             llm=LLM(
-                model="openai/gpt-4.1",
+                model="openai/gpt-4o",
                 temperature=0.1,
             ),
 
@@ -100,7 +100,7 @@ class AiPreRefinementEngineEvidenceBasedQualityAssuranceCrew:
             max_rpm=None,
             max_execution_time=None,
             llm=LLM(
-                model="openai/gpt-5.2-chat-latest",
+                model="openai/gpt-4o",
             ),
 
         )
@@ -119,7 +119,7 @@ class AiPreRefinementEngineEvidenceBasedQualityAssuranceCrew:
             max_rpm=None,
             max_execution_time=None,
             llm=LLM(
-                model="openai/gpt-4.1",
+                model="openai/gpt-4o",
                 temperature=0.4,
             ),
 
@@ -139,7 +139,7 @@ class AiPreRefinementEngineEvidenceBasedQualityAssuranceCrew:
             max_rpm=None,
             max_execution_time=None,
             llm=LLM(
-                model="openai/gpt-5.2-chat-latest",
+                model="openai/gpt-4o",
             ),
 
         )
@@ -178,7 +178,7 @@ class AiPreRefinementEngineEvidenceBasedQualityAssuranceCrew:
             max_rpm=None,
             max_execution_time=None,
             llm=LLM(
-                model="openai/gpt-5.2-chat-latest",
+                model="openai/gpt-4o",
             ),
 
         )
