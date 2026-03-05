@@ -234,8 +234,8 @@ evidence_gate_fail_or_escalate:
         "average_evidence_per_repo": 5.2
       },
       "top_evidence_repos": [
-        {"repo": "group/api-service", "evidence_count": 12, "signals": ["postgresql", "redis"]},
-        {"repo": "group/search-service", "evidence_count": 8, "signals": ["elasticsearch", "geohash"]}
+        {{"repo": "group/api-service", "evidence_count": 12, "signals": ["postgresql", "redis"]}},
+        {{"repo": "group/search-service", "evidence_count": 8, "signals": ["elasticsearch", "geohash"]}}
       ],
       "proceed_to_synthesis": true
     }
@@ -254,7 +254,7 @@ evidence_gate_fail_or_escalate:
       },
       "diagnostic_report": {
         "repos_attempted": ["group/repo1", "group/repo2"],
-        "search_results": {"hits": 0, "api_errors": ["403 Forbidden"]},
+        "search_results": {{"hits": 0, "api_errors": ["403 Forbidden"]}},
         "root_causes": ["GitLab search permissions insufficient", "Repository code not indexed"],
         "recommended_actions": [
           "Verify GitLab API token has 'read_repository' scope",
