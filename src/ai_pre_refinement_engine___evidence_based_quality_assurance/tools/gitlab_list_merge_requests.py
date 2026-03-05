@@ -176,7 +176,7 @@ class GitLabListMergeRequestsTool(BaseTool):
                 page += 1
                 
                 # Safety break to prevent infinite loops
-                if page > 50:  # Max 5000 merge requests
+                if page > 5:  # Max 500 merge requests
                     break
             
             # Prepare metadata

@@ -1,5 +1,3 @@
-import os
-
 from crewai import LLM
 from crewai import Agent, Crew, Process, Task
 from crewai.project import CrewBase, agent, crew, task
@@ -8,12 +6,8 @@ from crewai_tools import (
 )
 from ai_pre_refinement_engine___evidence_based_quality_assurance.tools.gitlab_repo_search_tool import GitLabRepoSearchTool
 from ai_pre_refinement_engine___evidence_based_quality_assurance.tools.gitlab_file_tree_tool import GitLabFileTreeTool
-from ai_pre_refinement_engine___evidence_based_quality_assurance.tools.gitlab_file_reader import GitLabFileReadTool
-from ai_pre_refinement_engine___evidence_based_quality_assurance.tools.gitlab_issue_list_tool import GitLabIssueListTool
-from ai_pre_refinement_engine___evidence_based_quality_assurance.tools.gitlab_mr_list_tool import GitLabMRListTool
 from ai_pre_refinement_engine___evidence_based_quality_assurance.tools.gitlab_list_group_projects import GitLabListGroupProjectsTool
 from ai_pre_refinement_engine___evidence_based_quality_assurance.tools.gitlab_search import GitLabSearchTool
-from ai_pre_refinement_engine___evidence_based_quality_assurance.tools.gitlab_repo_tree_lister import GitLabRepoTreeListerTool
 from ai_pre_refinement_engine___evidence_based_quality_assurance.tools.gitlab_get_file import GitLabGetFileTool
 from ai_pre_refinement_engine___evidence_based_quality_assurance.tools.gitlab_list_merge_requests import GitLabListMergeRequestsTool
 from ai_pre_refinement_engine___evidence_based_quality_assurance.tools.gitlab_list_issues import GitLabListIssuesTool
@@ -33,19 +27,19 @@ class AiPreRefinementEngineEvidenceBasedQualityAssuranceCrew:
             config=self.agents_config["planner_and_orchestrator"],
             
             
-            tools=[				GitLabRepoSearchTool(),
+            tools=[
+				GitLabRepoSearchTool(),
 				ScrapeWebsiteTool(),
 				GitLabSearchTool(),
-				GitLabListGroupProjectsTool()],
+				GitLabListGroupProjectsTool(),
+			],
             reasoning=False,
             max_reasoning_attempts=None,
             inject_date=True,
             allow_delegation=False,
-            max_iter=25,
+            max_iter=15,
             max_rpm=None,
-            
-            
-            max_execution_time=None,
+            max_execution_time=600,
             llm=LLM(
                 model="openai/gpt-4o-mini",
             ),
@@ -59,26 +53,21 @@ class AiPreRefinementEngineEvidenceBasedQualityAssuranceCrew:
             config=self.agents_config["repository_scout"],
             
             
-            tools=[				GitLabFileTreeTool(),
-				GitLabFileReadTool(),
-				GitLabIssueListTool(),
-				GitLabMRListTool(),
-				ScrapeWebsiteTool(),
+            tools=[
+				GitLabFileTreeTool(),
+				GitLabGetFileTool(),
+				GitLabListIssuesTool(),
+				GitLabListMergeRequestsTool(),
 				GitLabListGroupProjectsTool(),
 				GitLabSearchTool(),
-				GitLabRepoTreeListerTool(),
-				GitLabGetFileTool(),
-				GitLabListMergeRequestsTool(),
-				GitLabListIssuesTool()],
+			],
             reasoning=False,
             max_reasoning_attempts=None,
             inject_date=True,
             allow_delegation=False,
-            max_iter=25,
+            max_iter=15,
             max_rpm=None,
-            
-            
-            max_execution_time=None,
+            max_execution_time=600,
             llm=LLM(
                 model="openai/gpt-4o-mini",
                 temperature=0.1,
@@ -91,14 +80,14 @@ class AiPreRefinementEngineEvidenceBasedQualityAssuranceCrew:
         
         return Agent(
             config=self.agents_config["synthesis_tech_lead"],
-            tools=[GitLabFileReadTool(), GitLabGetFileTool()],
+            tools=[GitLabGetFileTool()],
             reasoning=False,
             max_reasoning_attempts=None,
             inject_date=True,
             allow_delegation=False,
-            max_iter=25,
+            max_iter=15,
             max_rpm=None,
-            max_execution_time=None,
+            max_execution_time=600,
             llm=LLM(
                 model="openai/gpt-4o-mini",
             ),
@@ -110,14 +99,14 @@ class AiPreRefinementEngineEvidenceBasedQualityAssuranceCrew:
         
         return Agent(
             config=self.agents_config["product_optimizer"],
-            tools=[GitLabFileReadTool()],
+            tools=[GitLabGetFileTool()],
             reasoning=False,
             max_reasoning_attempts=None,
             inject_date=True,
             allow_delegation=False,
-            max_iter=25,
+            max_iter=15,
             max_rpm=None,
-            max_execution_time=None,
+            max_execution_time=600,
             llm=LLM(
                 model="openai/gpt-4o-mini",
                 temperature=0.4,
@@ -130,14 +119,14 @@ class AiPreRefinementEngineEvidenceBasedQualityAssuranceCrew:
         
         return Agent(
             config=self.agents_config["quality_gate_critic"],
-            tools=[GitLabFileReadTool(), GitLabGetFileTool()],
+            tools=[GitLabGetFileTool()],
             reasoning=False,
             max_reasoning_attempts=None,
             inject_date=True,
             allow_delegation=False,
-            max_iter=25,
+            max_iter=15,
             max_rpm=None,
-            max_execution_time=None,
+            max_execution_time=600,
             llm=LLM(
                 model="openai/gpt-4o-mini",
             ),
@@ -154,9 +143,9 @@ class AiPreRefinementEngineEvidenceBasedQualityAssuranceCrew:
             max_reasoning_attempts=None,
             inject_date=True,
             allow_delegation=False,
-            max_iter=25,
+            max_iter=15,
             max_rpm=None,
-            max_execution_time=None,
+            max_execution_time=300,
             llm=LLM(
                 model="openai/gpt-4o-mini",
                 temperature=0.2,
@@ -169,14 +158,14 @@ class AiPreRefinementEngineEvidenceBasedQualityAssuranceCrew:
         
         return Agent(
             config=self.agents_config["complexity_assessment_specialist"],
-            tools=[GitLabFileReadTool()],
+            tools=[GitLabGetFileTool()],
             reasoning=False,
             max_reasoning_attempts=None,
             inject_date=True,
             allow_delegation=False,
-            max_iter=25,
+            max_iter=15,
             max_rpm=None,
-            max_execution_time=None,
+            max_execution_time=600,
             llm=LLM(
                 model="openai/gpt-4o-mini",
             ),

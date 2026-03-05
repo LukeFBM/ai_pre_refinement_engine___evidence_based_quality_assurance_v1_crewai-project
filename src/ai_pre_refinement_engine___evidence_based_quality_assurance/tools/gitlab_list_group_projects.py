@@ -123,8 +123,12 @@ class GitLabListGroupProjectsTool(BaseTool):
                 # Check if we got a full page (if less than per_page, we're done)
                 if len(projects) < per_page:
                     break
-                
+
                 page += 1
+
+                # Safety limit to prevent runaway pagination
+                if page > 10:
+                    break
             
             # Return results
             result = {

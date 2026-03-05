@@ -156,8 +156,12 @@ class GitLabSearchTool(BaseTool):
                     # Break if we've processed all pages or if no more results
                     if current_page >= total_pages or len(results) == 0:
                         break
-                        
+
                     page += 1
+
+                    # Safety limit to prevent runaway pagination
+                    if page > 5:
+                        break
                     
                 except requests.exceptions.Timeout:
                     return json.dumps({

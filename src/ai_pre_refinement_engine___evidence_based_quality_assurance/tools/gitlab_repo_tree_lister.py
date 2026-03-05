@@ -164,7 +164,7 @@ class GitLabRepoTreeListerTool(BaseTool):
                     current_page += 1
                     
                     # Safety check to prevent infinite loops
-                    if current_page > 1000:  # Max 1000 pages = 100,000 items
+                    if current_page > 10:  # Max 10 pages = 1,000 items
                         break
 
                 except requests.exceptions.Timeout:

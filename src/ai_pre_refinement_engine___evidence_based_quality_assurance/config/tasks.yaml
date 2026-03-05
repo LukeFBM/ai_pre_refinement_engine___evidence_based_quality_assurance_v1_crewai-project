@@ -390,7 +390,9 @@ execute_two_pass_analysis_with_intelligent_stopping:
     and query effectiveness, 2) Shortlist scoring methodology and top N selection
     rationale, 3) Deep read findings from prioritized files, 4) Stop condition triggers
     and evidence sufficiency assessment, 5) Coverage gaps and confidence levels, 6)
-    Efficiency metrics (API calls, files analyzed, time spent)'
+    Efficiency metrics (API calls, files analyzed, time spent).
+    IMPORTANT: Limit to max 3 search queries per repo and max 10 file reads total
+    across all repos. Stop early if you have sufficient evidence.'
   agent: repository_scout
   context:
   - plan_large_scale_repository_strategy
@@ -428,18 +430,16 @@ define_evidence_sufficiency_and_stop_conditions:
   context:
   - plan_large_scale_repository_strategy
 create_repo_summary_index_cache:
-  description: 'Generate a comprehensive repository summary index optimized for future
-    analysis caching. Extract and index: key architectural patterns, dependency relationships,
-    common code patterns, integration points, recent changes (commits/MRs), testing
-    patterns, and deployment flows. Structure data for incremental updates and fast
-    retrieval in subsequent analyses.'
-  expected_output: 'Repository summary index containing: 1) Architectural pattern
-    catalog with examples, 2) Dependency graph with version tracking, 3) Code pattern
-    index (functions, classes, APIs), 4) Integration point mapping, 5) Recent activity
-    summary (30-90 days), 6) Testing and deployment pattern analysis, 7) Cache metadata
-    (freshness, coverage, update requirements), 8) Incremental update strategy for
-    daily/weekly refresh'
-  agent: repository_scout
+  description: 'Summarize the repository system map from the previous task into a
+    concise cache index. Do NOT make additional GitLab API calls — use ONLY the data
+    already gathered in bootstrap_repository_system_map context. Organize the existing
+    findings into: 1) Technology stack per repo, 2) Key directories and entry points,
+    3) Integration points between repos. Keep the output under 2000 words.'
+  expected_output: 'Concise repository summary index containing: 1) Per-repo technology
+    stack summary (language, framework, database), 2) Key entry points and directories,
+    3) Inter-repo integration points, 4) Cache metadata (repos covered, confidence level).
+    No new API calls needed — synthesize from existing context only.'
+  agent: cache_intelligence_manager
   context:
   - bootstrap_repository_system_map
 validate_cache_quality_and_completeness:

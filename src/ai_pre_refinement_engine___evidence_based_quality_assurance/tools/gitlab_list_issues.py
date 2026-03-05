@@ -191,8 +191,12 @@ class GitLabListIssuesTool(BaseTool):
                     # If no more issues, break
                     if len(issues) < per_page:
                         break
-                        
+
                     page += 1
+
+                    # Safety limit to prevent runaway pagination
+                    if page > 5:
+                        break
                     
                 elif response.status_code == 404:
                     return json.dumps({
