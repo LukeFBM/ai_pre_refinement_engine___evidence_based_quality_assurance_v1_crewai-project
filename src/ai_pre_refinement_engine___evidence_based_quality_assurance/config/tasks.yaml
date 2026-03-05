@@ -1,36 +1,24 @@
 ---
 input_normalization_and_gitlab_scope_validation:
-  description: "Normalize inputs into a standardized format and validate that required
-    GitLab scope inputs are provided. Ensure the automation has the minimum information
-    needed to query GitLab repositories effectively.\n\n**UPDATED WITH GROUP PATH:**
-    \ngitlab_group_path: \"radical-app\"\n\nRequired inputs validation:\n- `gitlab_group_path`
-    OR `gitlab_project_ids` (comma-separated) - at least one must be provided\n- optional:
-    `default_ref` (default: \"main\")  \n- optional: `max_projects` (default: 10)\n-
-    optional: `max_files_per_project` (default: 12)\n\nIf neither `gitlab_group_path`
-    nor `gitlab_project_ids` is provided, STOP execution and output a clear error
-    explaining what is missing and how to provide it. Do not continue to subsequent
-    tasks.\n\nExtract and normalize the `{feature_idea}` from the input into a clean,
-    structured format for downstream analysis.\n\n**TARGET REPOSITORIES (HARDCODED SCOPE
-    — do NOT analyze repos outside this list):**\nGroup: radical-app\nRepos (match
-    by name, case-insensitive):\n  1. APIv3\n  2. Admin catalog\n  3. Next\n  4.
-    Pages-Next\n  5. Front end monorepo\n  6. booking\n\nStep 1: Call GitLabListGroupProjectsTool
-    with group_path=\"radical-app\"\nStep 2: Match results against the 6 target repo
-    names above (case-insensitive, partial match allowed)\nStep 3: Output ONLY the
-    matched repos with their project_ids, paths, and default_branches\nStep 4: If
-    fewer than 4 of the 6 repos are found, report which are MISSING but continue
+  description: "Normalize inputs into a standardized format for downstream analysis.
+    The GitLab scope is PRE-CONFIGURED — do NOT output any error about missing configuration.\n\n**PRE-CONFIGURED
+    GITLAB SCOPE (already provided — skip validation):**\ngitlab_group_path: \"{gitlab_group_path}\"\n\nDefaults:\n-
+    `default_ref`: \"main\"\n- `max_projects`: 10\n- `max_files_per_project`: 12\n\nExtract
+    and normalize the `{feature_idea}` from the input into a clean, structured format
+    for downstream analysis.\n\n**TARGET REPOSITORIES (HARDCODED SCOPE — do NOT analyze
+    repos outside this list):**\nGroup: {gitlab_group_path}\nRepos (match by name,
+    case-insensitive):\n  1. APIv3\n  2. Admin catalog\n  3. Next\n  4. Pages-Next\n
+    \ 5. Front end monorepo\n  6. booking\n\nStep 1: Call GitLabListGroupProjectsTool
+    with group_path=\"{gitlab_group_path}\"\nStep 2: Match results against the 6 target
+    repo names above (case-insensitive, partial match allowed)\nStep 3: Output ONLY
+    the matched repos with their project_ids, paths, and default_branches\nStep 4:
+    If fewer than 4 of the 6 repos are found, report which are MISSING but continue
     with what is available."
   expected_output: "**SUCCESS - Normalized Inputs:**\n```json\n{\n  \"feature_idea\":
-    \"[extracted and cleaned feature description]\",\n  \"gitlab_group_path\": \"radical-app\",
-    \n  \"gitlab_project_ids\": [],\n  \"default_ref\": \"[branch name, default: main]\",\n
-    \ \"max_projects\": [number, default: 10],\n  \"max_files_per_project\": [number,
-    default: 12]\n}\n```\n\n**FAILURE - Missing GitLab Scope:**\n```\n\U0001F6AB CONFIGURATION
-    REQUIRED\n\nMissing required GitLab repository scope. Please provide either:\n\nOption
-    1 - GitLab Group Path:\n  gitlab_group_path: \"your-company/platform-group\"\n\nOption
-    2 - Specific Project IDs: \n  gitlab_project_ids: \"12345,67890,54321\"\n\nWithout
-    repository access, technical feasibility analysis cannot proceed.\n\nNext steps:\n1.
-    Add GitLab scope to your automation inputs\n2. Ensure your GitLab API token has
-    'read_repository' permissions\n3. Re-run the analysis\n\nExample input format:\n{\n
-    \ \"feature_idea\": \"your feature description\",\n  \"gitlab_group_path\": \"company/marketplace-platform\"\n}\n```"
+    \"[extracted and cleaned feature description]\",\n  \"gitlab_group_path\": \"{gitlab_group_path}\",\n
+    \ \"gitlab_project_ids\": [],\n  \"default_ref\": \"main\",\n  \"max_projects\":
+    10,\n  \"max_files_per_project\": 12\n}\n```\n\n**Discovered Repositories:**\n```\n[list
+    of matched repos with project_ids, paths, and default_branches]\n```"
   agent: planner_and_orchestrator
 gitlab_tools_self_test:
   description: |-

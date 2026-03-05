@@ -26,6 +26,7 @@ def run_with_trigger(inputs=None):
     """Run the crew with provided inputs (used by deployment triggers and chat)."""
     if inputs is None:
         inputs = {'feature_idea': 'sample_value'}
+    inputs.setdefault('gitlab_group_path', 'radical-app')
     AiPreRefinementEngineEvidenceBasedQualityAssuranceCrew().crew().kickoff(inputs=inputs)
 
 
