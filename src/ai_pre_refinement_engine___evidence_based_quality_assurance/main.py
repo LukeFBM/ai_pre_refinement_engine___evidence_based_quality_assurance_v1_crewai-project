@@ -16,6 +16,7 @@ def run():
 
     inputs = {
         'feature_idea': feature_idea,
+        'gitlab_group_path': 'radical-app',
     }
     print(f"Starting crew with feature_idea: {feature_idea}")
     AiPreRefinementEngineEvidenceBasedQualityAssuranceCrew().crew().kickoff(inputs=inputs)
