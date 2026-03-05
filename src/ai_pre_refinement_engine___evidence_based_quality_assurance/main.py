@@ -14,16 +14,17 @@ def run():
     # Accept feature_idea from CLI: python main.py run "your feature description"
     feature_idea = sys.argv[2] if len(sys.argv) > 2 else 'sample_value'
 
-    if feature_idea in ('sample_value', '', None):
-        print("ERROR: Please provide a real feature_idea.")
-        print("Usage: python main.py run \"Add neighborhood-based rating system to booking search\"")
-        print("\nThe feature_idea must describe the actual feature to analyze.")
-        sys.exit(1)
-
     inputs = {
         'feature_idea': feature_idea,
     }
     print(f"Starting crew with feature_idea: {feature_idea}")
+    AiPreRefinementEngineEvidenceBasedQualityAssuranceCrew().crew().kickoff(inputs=inputs)
+
+
+def run_with_trigger(inputs=None):
+    """Run the crew with provided inputs (used by deployment triggers and chat)."""
+    if inputs is None:
+        inputs = {'feature_idea': 'sample_value'}
     AiPreRefinementEngineEvidenceBasedQualityAssuranceCrew().crew().kickoff(inputs=inputs)
 
 
